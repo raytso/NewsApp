@@ -15,21 +15,35 @@ class NewsListTableViewController: UITableViewController {
     
     var service: NewsService = NewsService()
     
-    var news: [News] = [] {
-        didSet {
-            self.tableView.reloadData()
-        }
-    }
+    var news: [News] = []
     
     // MARK: - View life cycle
 
     override func viewDidLoad() {
         super.viewDidLoad()
         
+        setupTableView()
+        
         service.getItems()
-            .subscribe(onNext: { (news) in
-                self.news = news
+            .subscribe(onNext: { [weak self] (news) in
+                guard let weakSelf = self else { return }
+                weakSelf.news = news
+                weakSelf.tableView.reloadData()
             }).disposed(by: disposeBag)
+        
+        
+        
+    }
+    
+    private func setupTableView() {
+        
+        tableView.delegate = self
+        tableView.dataSource = self
+        
+        tableView.rowHeight = UITableViewAutomaticDimension
+        tableView.estimatedRowHeight = 100.0
+        
+        tableView.tableFooterView = UIView()
     }
 
     override func didReceiveMemoryWarning() {
@@ -41,7 +55,7 @@ class NewsListTableViewController: UITableViewController {
 
     override func numberOfSections(in tableView: UITableView) -> Int {
         // #warning Incomplete implementation, return the number of sections
-        return 0
+        return 1
     }
 
     override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
@@ -51,9 +65,12 @@ class NewsListTableViewController: UITableViewController {
 
     
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        let cell = tableView.dequeueReusableCell(withIdentifier: "reuseIdentifier", for: indexPath)
-
-        // Configure the cell...
+        guard let cell = tableView.dequeueReusableCell(withIdentifier: "NewsListTableViewCell", for: indexPath) as? NewsListTableViewCell else { return UITableViewCell() }
+        
+        let model = news[indexPath.row]
+        
+        cell.titleLabel.text = model.title
+        cell.subtitleLabel.text = model.publisher
 
         return cell
     }

@@ -56,8 +56,8 @@ fileprivate extension News {
             let id = json["uuid"].string,
             let title = json["title"].string,
             let publisher = json["publisher"].string,
-            let publishedAt = json["published_at"].double,
-            let link = json["link"].url else { return nil }
+            let publishedAt = Double(json["published_at"].string ?? ""),
+            let link = URL(string: json["link"].string ?? "") else { return nil }
         self.uuid = id
         self.content = content
         self.title = title

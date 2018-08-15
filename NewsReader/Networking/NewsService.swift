@@ -14,13 +14,6 @@ import SwiftyJSON
 class NewsService {
     private var url: URL = URL(string: "http://doubleplay-sports-yql.media.yahoo.com/v3/sports_news?leagues=sports&stream_type=headlines&count=10&region=US&lang=en-US")!
     
-//    private let jsonDecoder: JSONDecoder
-//
-//    init() {
-//        self.jsonDecoder = JSONDecoder()
-//        self.jsonDecoder.keyDecodingStrategy = .convertFromSnakeCase
-//    }
-    
     func getItems() -> Observable<[News]> {
         return fetch()
             .flatMap { [weak self] in

@@ -14,13 +14,6 @@ import SwiftyJSON
 class NewsService {
     private var url: URL = URL(string: "http://doubleplay-sports-yql.media.yahoo.com/v3/sports_news?leagues=sports&stream_type=headlines&count=10&region=US&lang=en-US")!
     
-//    private let jsonDecoder: JSONDecoder
-//
-//    init() {
-//        self.jsonDecoder = JSONDecoder()
-//        self.jsonDecoder.keyDecodingStrategy = .convertFromSnakeCase
-//    }
-    
     func getItems() -> Observable<[News]> {
         return fetch()
             .flatMap { [weak self] in
@@ -63,8 +56,8 @@ fileprivate extension News {
             let id = json["uuid"].string,
             let title = json["title"].string,
             let publisher = json["publisher"].string,
-            let publishedAt = json["published_at"].double,
-            let link = json["link"].url else { return nil }
+            let publishedAt = Double(json["published_at"].string ?? ""),
+            let link = URL(string: json["link"].string ?? "") else { return nil }
         self.uuid = id
         self.content = content
         self.title = title

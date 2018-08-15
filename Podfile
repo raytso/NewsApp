@@ -9,5 +9,6 @@ target 'NewsReader' do
   pod 'Alamofire'
   pod 'RxSwift'
   pod 'RxCocoa'
+  pod 'SwiftyJSON'
 
 end

@@ -7,6 +7,7 @@ target 'NewsReader' do
 
   # Pods for NewsReader
   pod 'Alamofire'
+  pod 'Kingfisher'
   pod 'RxSwift'
   pod 'RxCocoa'
   pod 'SwiftyJSON'

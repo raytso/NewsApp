@@ -24,12 +24,6 @@ class NewsListTableViewController: UITableViewController {
     
     private let loadMoreEvent = PublishSubject<Void>()
     
-//    private lazy var refreshControl: UIRefreshControl? = {
-//        let control = UIRefreshControl()
-//        control.addTarget(self, action: #selector(updateAll()), for: .valueChanged)
-//        return control
-//    }()
-    
     // MARK: - View life cycle
 
     override func viewDidLoad() {

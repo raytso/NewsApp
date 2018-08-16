@@ -37,6 +37,10 @@ class NewsService {
             }
     }
     
+    func update(keys: [String]) -> Observable<[News]> {
+        return inflate(ids: keys)
+    }
+    
     private func fetch(_ key: String) -> Observable<JSON> {
         return Observable.create({ (observer) -> Disposable in
             Alamofire.request(self.url, method: .get).responseJSON { result in
@@ -60,7 +64,7 @@ class NewsService {
         .flatMap { [weak self] in
             return self?.fetch(ids: $0) ?? .empty()
         }
-        .take(batches.count)
+        .take(batches.count) //WARNING: this will HANG
         .toArray()
         .observeOn(concurrentScheduler)
         .flatMap { [weak self] in
@@ -130,15 +134,15 @@ fileprivate extension News {
             let publishedAt = Double(json["published_at"].string ?? ""),
             let link = URL(string: json["link"].string ?? "") else { return nil }
         self.uuid = id
-        self.content = content
+        self.content = content.replacingOccurrences(of: "<[^>]+>", with: "", options: .regularExpression, range: nil)
         self.title = title
         self.publisher = publisher
         self.publishedAt = publishedAt
         self.link = link
         self.summary = json["summary"].string
         var images: [URL] = []
-        let main = json["original_url"].url
-        let others: [URL] = json["resolutions"].array?.compactMap { $0["url"].url } ?? []
+        let main = json["main_image"]["original_url"].url
+        let others: [URL] = json["main_image"]["resolutions"].array?.compactMap { $0["url"].url } ?? []
         if main == nil {
             images = others
         } else {

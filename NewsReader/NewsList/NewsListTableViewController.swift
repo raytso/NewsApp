@@ -8,6 +8,7 @@
 
 import UIKit
 import RxSwift
+import Kingfisher
 
 class NewsListTableViewController: UITableViewController {
     
@@ -22,6 +23,12 @@ class NewsListTableViewController: UITableViewController {
     private let concurrentScheduler: ConcurrentDispatchQueueScheduler = ConcurrentDispatchQueueScheduler(queue: .global())
     
     private let loadMoreEvent = PublishSubject<Void>()
+    
+//    private lazy var refreshControl: UIRefreshControl? = {
+//        let control = UIRefreshControl()
+//        control.addTarget(self, action: #selector(updateAll()), for: .valueChanged)
+//        return control
+//    }()
     
     // MARK: - View life cycle
 
@@ -56,6 +63,9 @@ class NewsListTableViewController: UITableViewController {
         tableView.estimatedRowHeight = 400.0
         
         tableView.tableFooterView = UIView()
+        
+        refreshControl = UIRefreshControl()
+        refreshControl?.addTarget(self, action: #selector(updateAll), for: .valueChanged)
     }
     
     
@@ -71,15 +81,23 @@ class NewsListTableViewController: UITableViewController {
     }
     
     private func add(_ contents: [News]) {
-        let oldOffset = tableView.contentOffset.y
         self.news += contents
         self.tableView.reloadData()
-        tableView.contentOffset.y = oldOffset
     }
     
-    private func update(_ content: News, at index: Int) {
-        news[index] = content
-        tableView.reloadData()
+    private func reload(_ contents: [News]) {
+        self.news = contents
+        self.tableView.reloadData()
+    }
+    
+    @objc private func updateAll() {
+        service.update(keys: news.map { $0.uuid })
+            .observeOn(MainScheduler.instance)
+            .subscribe(onNext: { [weak self] updated in
+                self?.reload(updated)
+                self?.tableView.reloadData()
+                self?.refreshControl?.endRefreshing()
+            }).disposed(by: disposeBag)
     }
 
     override func didReceiveMemoryWarning() {
@@ -102,7 +120,7 @@ class NewsListTableViewController: UITableViewController {
     override func scrollViewDidEndDecelerating(_ scrollView: UIScrollView) {
         let position = scrollView.contentOffset.y + scrollView.bounds.size.height - scrollView.contentInset.bottom
         let bottom = tableView.contentSize.height
-        let buffer: CGFloat = 40.0
+        let buffer: CGFloat = 20.0
         if position > bottom + buffer {
             loadMoreEvent.onNext(())
         }
@@ -116,6 +134,7 @@ class NewsListTableViewController: UITableViewController {
         
         cell.titleLabel.text = model.title
         cell.subtitleLabel.text = model.publisher
+        cell.thumbnailImageView.kf.setImage(with: model.images?.last, placeholder: #imageLiteral(resourceName: "icon_world"))
 
         return cell
     }

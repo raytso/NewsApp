@@ -8,6 +8,7 @@
 
 import UIKit
 import RxSwift
+import Kingfisher
 
 class NewsListTableViewController: UITableViewController {
     
@@ -17,6 +18,12 @@ class NewsListTableViewController: UITableViewController {
     
     var news: [News] = []
     
+    var didLoadMore: Bool = false
+    
+    private let concurrentScheduler: ConcurrentDispatchQueueScheduler = ConcurrentDispatchQueueScheduler(queue: .global())
+    
+    private let loadMoreEvent = PublishSubject<Void>()
+    
     // MARK: - View life cycle
 
     override func viewDidLoad() {
@@ -25,10 +32,19 @@ class NewsListTableViewController: UITableViewController {
         setupTableView()
         
         service.getItems()
+            .observeOn(concurrentScheduler)
+            .map { $0.sorted { $0.publishedAt > $1.publishedAt } }
+            .observeOn(MainScheduler.instance)
             .subscribe(onNext: { [weak self] (news) in
-                guard let weakSelf = self else { return }
-                weakSelf.news = news
-                weakSelf.tableView.reloadData()
+                self?.add(news)
+            }).disposed(by: disposeBag)
+        
+        loadMoreEvent
+            .flatMapFirst { Observable.just(()) }
+            .subscribe(onNext: { [weak self] _ in
+                if self?.didLoadMore == false {
+                    self?.loadMore()
+                }
             }).disposed(by: disposeBag)
     }
     
@@ -38,9 +54,44 @@ class NewsListTableViewController: UITableViewController {
         tableView.dataSource = self
         
         tableView.rowHeight = UITableViewAutomaticDimension
-        tableView.estimatedRowHeight = 100.0
+        tableView.estimatedRowHeight = 400.0
         
         tableView.tableFooterView = UIView()
+        
+        refreshControl = UIRefreshControl()
+        refreshControl?.addTarget(self, action: #selector(updateAll), for: .valueChanged)
+    }
+    
+    
+    private func loadMore() {
+        didLoadMore = true
+        service.getMore()
+            .observeOn(concurrentScheduler)
+            .map { $0.sorted { $0.publishedAt > $1.publishedAt } }
+            .observeOn(MainScheduler.instance)
+            .subscribe(onNext: { [weak self] news in
+                self?.add(news)
+            }).disposed(by: disposeBag)
+    }
+    
+    private func add(_ contents: [News]) {
+        self.news += contents
+        self.tableView.reloadData()
+    }
+    
+    private func reload(_ contents: [News]) {
+        self.news = contents
+        self.tableView.reloadData()
+    }
+    
+    @objc private func updateAll() {
+        service.update(keys: news.map { $0.uuid })
+            .observeOn(MainScheduler.instance)
+            .subscribe(onNext: { [weak self] updated in
+                self?.reload(updated)
+                self?.tableView.reloadData()
+                self?.refreshControl?.endRefreshing()
+            }).disposed(by: disposeBag)
     }
 
     override func didReceiveMemoryWarning() {
@@ -59,6 +110,15 @@ class NewsListTableViewController: UITableViewController {
         // #warning Incomplete implementation, return the number of rows
         return news.count
     }
+    
+    override func scrollViewDidEndDecelerating(_ scrollView: UIScrollView) {
+        let position = scrollView.contentOffset.y + scrollView.bounds.size.height - scrollView.contentInset.bottom
+        let bottom = tableView.contentSize.height
+        let buffer: CGFloat = 20.0
+        if position > bottom + buffer {
+            loadMoreEvent.onNext(())
+        }
+    }
 
     
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
@@ -68,6 +128,7 @@ class NewsListTableViewController: UITableViewController {
         
         cell.titleLabel.text = model.title
         cell.subtitleLabel.text = model.publisher
+        cell.thumbnailImageView.kf.setImage(with: model.images?.last, placeholder: #imageLiteral(resourceName: "icon_world"))
 
         return cell
     }
